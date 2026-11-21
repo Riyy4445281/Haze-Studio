@@ -58,7 +58,7 @@ h2{font-size:1.05rem;font-weight:600;margin:6px 0 2px}
 .chip.on{background:var(--blue);color:#06101f;border-color:transparent}
 .hint{margin:4px 0;color:var(--soft);font-size:.85rem}
 #note{margin:0;color:var(--soft);font-size:.85rem;-webkit-user-select:text;user-select:text}
-#out{display:none;max-width:100%;border-radius:12px;margin-top:8px}
+#out{display:none;max-width:100%;max-height:140px;object-fit:contain;border-radius:12px;margin-top:8px}
 [hidden]{display:none!important}
 :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 </style>
@@ -88,6 +88,7 @@ h2{font-size:1.05rem;font-weight:600;margin:6px 0 2px}
   <section class="msg glass" id="msg" hidden>
     <p id="note"></p>
     <img id="out" alt="Exported photo">
+    <div class="chips" id="acts" hidden></div>
   </section>
   <section class="sheet glass" id="sheet" hidden>
     <div class="sub" id="sub"></div>
@@ -152,7 +153,7 @@ const clone = o => structuredClone(o);
 const geoKey = () => JSON.stringify([S.rot, S.fh, S.fv, S.G.ang]);
 const cv = $("view"), vw = $("vw");
 
-function say(t){ $("note").textContent = t || ""; $("msg").hidden = !t; if (!t) $("out").style.display = "none"; }
+function say(t){ $("note").textContent = t || ""; $("msg").hidden = !t; $("acts").hidden = true; $("acts").innerHTML = ""; if (!t) $("out").style.display = "none"; }
 $("note").onclick = () => say("");
 
 /* history */
@@ -627,6 +628,7 @@ cmp.addEventListener("pointerdown", () => { showOrig = true; schedule(); });
 ["pointerup", "pointerleave", "pointercancel"].forEach(ev => cmp.addEventListener(ev, () => { if (showOrig) { showOrig = false; schedule(); } }));
 $("help").onclick = () => say("Pick a tool in the dock; tap it again to collapse. Drag a slider to fine-tune, tap beside the thumb to move 2 points, double tap to reset it. Masking: drag the dots to move, stretch and rotate the mask. Hold the clock to compare. The check saves or shares the full-size photo.");
 
+let expURL = null;
 $("save").onclick = async () => {
   say("Processing full size…");
   await new Promise(r => setTimeout(r, 30));
@@ -634,11 +636,21 @@ $("save").onclick = async () => {
     const fc = makeBase(3000), fg = fc.getContext("2d");
     fg.putImageData(pipe(fg.getImageData(0, 0, fc.width, fc.height), fc.width, fc.height), 0, 0);
     const blob = await new Promise(r => fc.toBlob(r, "image/jpeg", 0.92));
-    const file = new File([blob], "photo-" + Date.now() + ".jpg", {type: "image/jpeg"});
-    $("out").src = fc.toDataURL("image/jpeg", 0.92); $("out").style.display = "block";
-    if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file]}); $("note").textContent = "Exported at " + fc.width + " × " + fc.height + "."; }
-    else $("note").textContent = "Sharing is not available here. Press and hold the photo below and choose to download it.";
-    $("msg").hidden = false;
+    const name = "photo-" + Date.now() + ".jpg", file = new File([blob], name, {type: "image/jpeg"});
+    if (expURL) URL.revokeObjectURL(expURL);
+    expURL = URL.createObjectURL(blob);
+    $("out").src = expURL; $("out").style.display = "block";
+    $("note").textContent = "Ready: " + fc.width + " × " + fc.height + ". Tap Share or Download.";
+    const acts = $("acts"); acts.innerHTML = "";
+    if (navigator.canShare && navigator.canShare({files: [file]})) {
+      acts.append(chip("Share", 1, async () => {
+        try { await navigator.share({files: [file]}); } catch (e) { if (e.name !== "AbortError") $("note").textContent = "Share failed (" + e.name + "). Use Download instead."; }
+      }));
+    }
+    acts.append(chip("Download", 0, () => {
+      const a = el("a"); a.href = expURL; a.download = name; document.body.append(a); a.click(); a.remove();
+    }));
+    acts.hidden = false; $("msg").hidden = false;
   } catch (e) { say("Export did not finish: " + e.name); }
 };
 
