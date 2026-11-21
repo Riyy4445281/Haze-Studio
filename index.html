@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Haze Studio</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#27343e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--sky1:#5e7686;--sky2:#7d93a1;--grass:#3f6340;--glass:rgba(255,255,255,.14);--edge:rgba(255,255,255,.34);--ink:#fff;--soft:rgba(255,255,255,.72);--blue:#6ea8ff;--shade:rgba(10,16,22,.36);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--sky1:#27343e;--sky2:#3a4b57;--grass:#1f3a2a;--shade:rgba(0,0,0,.42);color-scheme:dark}}
+:root[data-theme="dark"]{--sky1:#27343e;--sky2:#3a4b57;--grass:#1f3a2a;--shade:rgba(0,0,0,.42);color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{color:var(--ink);font:400 15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--sky1);-webkit-user-select:none;user-select:none}
+.bg{position:fixed;inset:-40px;z-index:-2;background:linear-gradient(180deg,var(--sky1),var(--sky2) 55%,var(--grass));background-size:cover;background-position:center;filter:blur(26px) saturate(1.1)}
+.shade{position:fixed;inset:0;z-index:-1;background:var(--shade)}
+.app{display:flex;flex-direction:column;height:100%;max-width:700px;margin-inline:auto;padding:8px;gap:8px}
+.glass{background:var(--glass);border:1px solid var(--edge);border-radius:22px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.top{display:flex;align-items:center;gap:0;padding:3px 6px}
+.sp{flex:1}
+.ic{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;color:var(--ink);border-radius:50%;cursor:pointer;flex:none}
+.ic svg,.tb svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ic:disabled{opacity:.35}
+.stage{position:relative;flex:1;min-height:150px;display:flex;flex-direction:column;gap:6px;padding:8px;overflow:hidden;background:rgba(0,0,0,.28)}
+#hist{flex:none;width:100%;height:44px;border-radius:12px;background:rgba(30,30,30,.45);pointer-events:none}
+.vw{position:relative;flex:1;min-height:0;width:100%}
+#view{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:10px}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+#ov .ln{stroke:#fff;stroke-width:1.6;fill:none;opacity:.95;filter:drop-shadow(0 0 2px rgba(0,0,0,.55))}
+#ov .dl{stroke-dasharray:5 5;opacity:.7}
+#ov .hd{fill:#fff;stroke:rgba(0,0,0,.4);stroke-width:1.5;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))}
+#ov .hc{fill:var(--blue);stroke:#fff;stroke-width:2.5}
+#ov .hs{fill:#ff6b6b;stroke:#fff;stroke-width:1.5}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--soft)}
+.msg{padding:8px 14px;max-height:30%;overflow-y:auto}
+.sheet{max-height:40%;overflow-y:auto;padding:6px 14px 10px}
+.sub{display:flex;gap:2px;margin:0 -8px 2px;overflow-x:auto;scrollbar-width:none}
+.sub::-webkit-scrollbar{display:none}
+.tb{flex:1;min-width:58px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 5px;background:none;border:0;border-radius:14px;color:var(--soft);font:inherit;font-size:.78rem;cursor:pointer}
+.tb.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
+.dock{display:flex;justify-content:space-around;padding:5px;gap:2px}
+.dock .tb{min-width:0;font-size:.7rem;padding:6px 2px 5px}
+.dock .tb.on{background:var(--blue);color:#06101f;box-shadow:none}
+h2{font-size:1.05rem;font-weight:600;margin:6px 0 2px}
+.row{display:grid;grid-template-columns:96px 1fr 46px;align-items:center;gap:8px}
+.row .lb{color:var(--soft);cursor:pointer;font-size:.9rem;padding:6px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .v{text-align:right;font-size:.85rem;font-variant-numeric:tabular-nums}
+.sl{position:relative;height:38px;margin:0 10px;touch-action:pan-y;cursor:pointer;outline-offset:6px}
+.sl::before{content:"";position:absolute;left:0;right:0;top:18px;height:2px;background:rgba(255,255,255,.55);border-radius:2px}
+.sl i{position:absolute;top:9px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0}
+.chip{font:inherit;color:var(--ink);background:var(--glass);border:1px solid var(--edge);border-radius:999px;padding:8px 16px;min-height:42px;cursor:pointer}
+.chip.on{background:var(--blue);color:#06101f;border-color:transparent}
+.hint{margin:4px 0;color:var(--soft);font-size:.85rem}
+#note{margin:0;color:var(--soft);font-size:.85rem;-webkit-user-select:text;user-select:text}
+#out{display:none;max-width:100%;border-radius:12px;margin-top:8px}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div><div class="shade"></div>
+<div class="app" id="app">
+  <header class="top glass">
+    <label class="ic" for="file" role="button" aria-label="Open photo" data-ic="image"></label>
+    <input id="file" type="file" accept="image/*" hidden>
+    <button class="ic" id="un" aria-label="Back one step" data-ic="undo" disabled></button>
+    <button class="ic" id="re" aria-label="Forward one step" data-ic="redo" disabled></button>
+    <button class="ic" id="rs" aria-label="Reset all edits" data-ic="reset" disabled></button>
+    <span class="sp"></span>
+    <button class="ic" id="cmp" aria-label="Hold to compare" data-ic="clock" disabled></button>
+    <button class="ic" id="help" aria-label="Help" data-ic="help"></button>
+    <button class="ic" id="save" aria-label="Save or share" data-ic="check" disabled></button>
+  </header>
+  <main class="stage glass">
+    <canvas id="hist" width="256" height="44" hidden></canvas>
+    <div class="vw" id="vw">
+      <canvas id="view" hidden></canvas>
+      <svg id="ov" aria-hidden="true"></svg>
+      <div id="empty">Open a photo from your phone to start editing. Nothing is uploaded; everything stays on your device.</div>
+    </div>
+  </main>
+  <section class="msg glass" id="msg" hidden>
+    <p id="note"></p>
+    <img id="out" alt="Exported photo">
+  </section>
+  <section class="sheet glass" id="sheet" hidden>
+    <div class="sub" id="sub"></div>
+    <div id="panel"></div>
+  </section>
+  <nav class="dock glass" id="dock"></nav>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const IC = {
+  image:'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
+  undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo:'<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+  reset:'<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
+  clock:'<path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v4h4"/><path d="M12 8v4l3 2"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  wand:'<path d="M4 20L14 10"/><path d="M15 3v4M13 5h4M19 11v3M17.5 12.5h3"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  thermo:'<path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/>',
+  vig:'<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="5"/>',
+  mask:'<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><circle cx="12" cy="12" r="3"/>',
+  presets:'<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>',
+  rotate:'<path d="M20 12a8 8 0 1 1-2.5-5.8"/><path d="M20 4v5h-5"/>',
+  sliders:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+  crop:'<path d="M7 3v14h14"/><path d="M3 7h14v14"/>',
+  eraser:'<path d="M4 16l9-10 7 6-6 7H8z"/><path d="M8 20h12"/>',
+  drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  detail:'<path d="M12 4l8 15H4z"/>',
+  optics:'<circle cx="9" cy="12" r="6"/><path d="M15 6.5a6 6 0 0 1 0 11"/>',
+  flipH:'<path d="M12 3v18"/><path d="M8 8l-5 8h5zM16 8l5 8h-5z"/>',
+  flipV:'<path d="M3 12h18"/><path d="M8 8h8l-4-5z"/><path d="M8 16h8l-4 5z"/>'
+};
+const svg = n => '<svg viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>';
+document.querySelectorAll("[data-ic]").forEach(e => e.innerHTML = svg(e.dataset.ic));
+
+const R = (k, n, lo = -100, hi = 100) => [k, n, lo, hi];
+const TABS = {
+  Light:{ic:"sun", head:"Basic", items:[R("exposure","Exposure"),R("contrast","Contrast"),R("highlights","Highlights"),R("shadows","Shadows"),R("whites","Whites"),R("blacks","Blacks")]},
+  Color:{ic:"thermo", head:"White balance", items:[R("temp","Temp"),R("tint","Tint"),R("vibrance","Vibrance"),R("sat","Saturation")]},
+  Blur:{ic:"drop", head:"Blur", items:[R("blur","Blur",0,100),R("vb","Vignette blur",0,100)]},
+  Effects:{ic:"vig", head:"Effects", items:[R("vig","Vignette"),R("vg","Vignette glass",0,100),R("grain","Grain",0,100),R("blur","Blur",0,100),R("vb","Vignette blur",0,100),R("warp","Warp"),R("wave","Wave",0,100)]},
+  Detail:{ic:"detail", head:"Detail", items:[R("sharp","Sharpen",0,100),R("nr","Noise reduction",0,100)]},
+  Opt:{ic:"optics", head:"Optics", items:[R("ca","Chromatic aberr.",0,100),R("dist","Distortion")]}
+};
+const EDIT_TABS = ["Light","Color","Blur","Effects","Detail","Opt"], MASK_TABS = ["Light","Color","Blur","Effects"];
+const DOCK = [["actions","wand","Actions"],["presets","presets","Presets"],["crop","crop","Crop"],["edit","sliders","Edit"],["mask","mask","Masking"],["remove","eraser","Remove"]];
+const PRESETS = {
+  "Punchy":{contrast:25,vibrance:35,sat:10,shadows:20,highlights:-20},
+  "Warm film":{temp:25,tint:5,contrast:-10,blacks:30,sat:-10,grain:25},
+  "Faded":{blacks:45,contrast:-20,sat:-20,exposure:10},
+  "Cool":{temp:-30,contrast:10,shadows:10},
+  "Black and white":{sat:-100,contrast:25,shadows:10},
+  "Moody":{exposure:-20,contrast:30,highlights:-30,sat:-15,vig:-40},
+  "Soft glow":{contrast:-25,highlights:-30,shadows:35,whites:20,sat:-8},
+  "Frutiger glass":{vg:70,vibrance:30,contrast:10,highlights:-10,temp:-10}
+};
+const NEW = () => ({V:{}, L:{}, m:{t:"off",cx:.5,cy:.5,rx:34,ry:24,rot:0,f:50,wd:20,a:90,inv:0,er:0,r:30}, st:[], rm:[], rot:0, fh:0, fv:0, G:{ang:0,rb:30}});
+let S = NEW(), img = null, base = null, baseData = null, tab = "Light", mtab = "Light", mode = null, queued = false, showOrig = false, autoPre = null, autoB = null, H = [], hi = 0, K = 1, ovl = true;
+const clone = o => structuredClone(o);
+const geoKey = () => JSON.stringify([S.rot, S.fh, S.fv, S.G.ang]);
+const cv = $("view"), vw = $("vw");
+
+function say(t){ $("note").textContent = t || ""; $("msg").hidden = !t; if (!t) $("out").style.display = "none"; }
+$("note").onclick = () => say("");
+
+/* history */
+function ui(){ $("un").disabled = hi < 1; $("re").disabled = hi >= H.length - 1; $("rs").disabled = !img; }
+function commit(){
+  if (!img || JSON.stringify(S) === JSON.stringify(H[hi])) return;
+  H.length = hi + 1; H.push(clone(S)); if (H.length > 60) H.shift(); hi = H.length - 1; ui();
+}
+function go(n){
+  const j = hi + n; if (j < 0 || j >= H.length) return;
+  hi = j; const gk = geoKey(); S = clone(H[hi]); autoPre = null;
+  if (geoKey() !== gk) prepare(); else schedule();
+  buildUI(); ui();
+}
+$("un").onclick = () => go(-1);
+$("re").onclick = () => go(1);
+$("rs").onclick = () => { const gk = geoKey(); S = NEW(); autoPre = null; if (geoKey() !== gk) prepare(); else schedule(); buildUI(); commit(); };
+
+/* slider: drag = fine control, tap beside the thumb = 2 points, double tap = default */
+function slider(lo, hi_, def, get, set, done){
+  const s = el("div", "sl"), th = el("i"); s.append(th); s.tabIndex = 0; s.setAttribute("role", "slider");
+  s.setAttribute("aria-valuemin", lo); s.setAttribute("aria-valuemax", hi_);
+  const pos = () => { th.style.left = (get() - lo) / (hi_ - lo) * 100 + "%"; s.setAttribute("aria-valuenow", get()); };
+  const put = v => { set(Math.max(lo, Math.min(hi_, Math.round(v)))); pos(); };
+  let d = null, last = 0;
+  s.onpointerdown = e => {
+    const r = s.getBoundingClientRect(), tx = (get() - lo) / (hi_ - lo) * r.width, x = e.clientX - r.left, now = Date.now();
+    if (now - last < 320) { last = 0; d = null; put(def); done(); return; }
+    last = now;
+    d = {x0: e.clientX, v0: get(), w: r.width, near: Math.abs(x - tx) < 26 * K, dir: x > tx ? 1 : -1, moved: false};
+    s.setPointerCapture(e.pointerId);
+  };
+  s.onpointermove = e => {
+    if (!d) return; const dx = e.clientX - d.x0;
+    if (Math.abs(dx) > 6) d.moved = true;
+    if (d.moved) put(d.v0 + dx / d.w * (hi_ - lo));
+  };
+  s.onpointerup = () => { if (!d) return; if (!d.moved && !d.near) put(get() + d.dir * 2); d = null; done(); };
+  s.onpointercancel = () => { d = null; };
+  s.onkeydown = e => { const n = {ArrowLeft:-1,ArrowDown:-1,ArrowRight:1,ArrowUp:1}[e.key]; if (n) { e.preventDefault(); put(get() + n); done(); } };
+  s.rs = () => { put(def); done(); };
+  pos(); return s;
+}
+function fmt(o, k, lo){
+  const n = S[o][k] || 0;
+  if (k === "exposure") return (n >= 0 ? "+" : "") + (n / 100 * 3).toFixed(2);
+  if (k === "ang") return (n / 10).toFixed(1) + "°";
+  const m = Math.round(n);
+  return (m > 0 && lo < 0 ? "+" : "") + m;
+}
+let pq = false;
+function prepSoon(){ if (!pq) { pq = true; requestAnimationFrame(() => { pq = false; if (img) prepare(); }); } }
+function row(o, k, name, lo, hi_, def){
+  const r = el("div", "row"), lb = el("span", "lb"), val = el("span", "v"); lb.textContent = name;
+  const sl = slider(lo, hi_, def, () => S[o][k] || 0, v => {
+    S[o][k] = v; val.textContent = fmt(o, k, lo);
+    if (o === "V" && autoPre) { autoPre = null; if (autoB) autoB.classList.remove("on"); }
+    if (o === "G" && k === "ang") prepSoon(); else schedule();
+  }, commit);
+  val.textContent = fmt(o, k, lo); lb.onclick = sl.rs; r.append(lb, sl, val); return r;
+}
+
+/* UI */
+function tbtn(icon, label, on, fn){ const b = el("button", "tb" + (on ? " on" : "")); b.innerHTML = svg(icon) + "<span>" + label + "</span>"; b.onclick = fn; return b; }
+function chip(n, on, fn){ const b = el("button", "chip" + (on ? " on" : "")); b.textContent = n; b.onclick = fn; return b; }
+function h2(t){ const h = el("h2"); h.textContent = t; return h; }
+function hint(t){ const p = el("p", "hint"); p.textContent = t; return p; }
+function pick(k){
+  mode = mode === k ? null : k;
+  if (mode === "mask" && S.m.t === "off") S.m.t = "radial";
+  buildUI(); schedule();
+}
+function buildUI(){
+  const sub = $("sub"), panel = $("panel"), dock = $("dock"), sl = sub.scrollLeft;
+  sub.innerHTML = panel.innerHTML = dock.innerHTML = ""; autoB = null;
+  DOCK.forEach(([k, ic, n]) => dock.append(tbtn(ic, n, mode === k, () => pick(k))));
+  $("sheet").hidden = !mode;
+  sub.style.display = mode === "edit" || mode === "mask" ? "flex" : "none";
+  if (mode === "actions") {
+    panel.append(h2("Actions"));
+    const c = el("div", "chips"); autoB = chip("Auto adjust", !!autoPre, autoAdjust);
+    c.append(autoB,
+      chip("Black and white", 0, () => { S.V.sat = -100; S.V.contrast = Math.max(S.V.contrast || 0, 25); autoPre = null; schedule(); commit(); buildUI(); }),
+      chip("Reset all", 0, () => $("rs").onclick()));
+    panel.append(c);
+  } else if (mode === "presets") {
+    const d = el("div", "chips");
+    Object.keys(PRESETS).forEach(n => d.append(chip(n, 0, () => { S.V = {...PRESETS[n]}; autoPre = null; schedule(); commit(); })));
+    panel.append(h2("Presets"), d);
+  } else if (mode === "crop") {
+    panel.append(h2("Crop"));
+    const t = el("div", "sub"); t.style.margin = "0 -8px";
+    t.append(
+      tbtn("rotate", "Rotate", false, () => { if (img) { S.rot = (S.rot + 1) % 4; prepare(); commit(); } }),
+      tbtn("flipH", "Flip H", S.fh, () => { if (img) { S.fh = S.fh ? 0 : 1; prepare(); commit(); buildUI(); } }),
+      tbtn("flipV", "Flip V", S.fv, () => { if (img) { S.fv = S.fv ? 0 : 1; prepare(); commit(); buildUI(); } })
+    );
+    panel.append(t, row("G", "ang", "Straighten", -450, 450, 0));
+  } else if (mode === "edit") {
+    autoB = tbtn("wand", "Auto", !!autoPre, autoAdjust); sub.append(autoB);
+    EDIT_TABS.forEach(t => sub.append(tbtn(TABS[t].ic, t, t === tab, () => { tab = t; buildUI(); })));
+    panel.append(h2(TABS[tab].head)); TABS[tab].items.forEach(i => panel.append(row("V", i[0], i[1], i[2], i[3], 0)));
+  } else if (mode === "mask") {
+    MASK_TABS.forEach(t => sub.append(tbtn(TABS[t].ic, t, t === mtab, () => { mtab = t; buildUI(); })));
+    maskUI(panel);
+  } else if (mode === "remove") {
+    panel.append(h2("Remove"), hint("Paint over a spot or blemish on the photo to remove it."), row("G", "rb", "Brush size", 5, 100, 30));
+    const c = el("div", "chips"); c.append(chip("Clear removals", 0, () => { S.rm = []; commit(); schedule(); })); panel.append(c);
+  }
+  sub.scrollLeft = sl; drawOv();
+}
+function maskUI(p){
+  const m = S.m, c = el("div", "chips");
+  [["radial","Radial"],["linear","Linear"],["draw","Brush"],["off","Off"]].forEach(([t, n]) => c.append(chip(n, m.t === t, () => { S.m.t = t; commit(); buildUI(); schedule(); })));
+  p.append(c);
+  if (m.t === "off") { p.append(hint("Choose Radial, Linear or Brush, then adjust the mask on the photo. Edits below apply only inside it.")); return; }
+  const c2 = el("div", "chips");
+  if (m.t === "draw") c2.append(chip("Erase", m.er, () => { S.m.er = S.m.er ? 0 : 1; buildUI(); }), chip("Clear", 0, () => { S.st = []; commit(); schedule(); }));
+  c2.append(chip("Invert", m.inv, () => { S.m.inv = S.m.inv ? 0 : 1; commit(); buildUI(); schedule(); }), chip(ovl ? "Hide overlay" : "Show overlay", 0, () => { ovl = !ovl; buildUI(); schedule(); }));
+  p.append(c2);
+  if (m.t === "radial") p.append(row("m", "f", "Feather", 0, 100, 50));
+  else if (m.t === "linear") p.append(row("m", "wd", "Width", 1, 150, 20));
+  else p.append(row("m", "r", "Brush size", 5, 100, 30), row("m", "f", "Feather", 0, 100, 50));
+  p.append(h2("Inside the mask: " + TABS[mtab].head));
+  TABS[mtab].items.forEach(i => p.append(row("L", i[0], i[1], i[2], i[3], 0)));
+}
+
+function autoAdjust(){
+  if (!baseData) return;
+  if (autoPre) { S.V = autoPre; autoPre = null; }
+  else {
+    autoPre = {...S.V}; const d = baseData.data; let s = 0, n = 0;
+    for (let i = 0; i < d.length; i += 16) { s += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; n++; }
+    const V = S.V; ["exposure","contrast","highlights","shadows","whites","blacks","temp","tint","vibrance","sat"].forEach(k => V[k] = 0);
+    V.exposure = Math.max(-60, Math.min(60, Math.round((0.46 - s / n) * 200)));
+    V.contrast = 10; V.highlights = -15; V.shadows = 15; V.vibrance = 15;
+  }
+  buildUI(); schedule(); commit();
+}
+
+/* image */
+function makeBase(maxSide){
+  const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight)), r = S.rot;
+  const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s), c = el("canvas");
+  const cw = r % 2 ? h : w, ch = r % 2 ? w : h; c.width = cw; c.height = ch;
+  const ang = (S.G.ang || 0) / 10 * Math.PI / 180, th = Math.abs(ang), cover = Math.cos(th) + Math.sin(th) * Math.max(cw / ch, ch / cw);
+  const g = c.getContext("2d"); g.translate(cw / 2, ch / 2); g.rotate(ang); g.scale(cover * (S.fh ? -1 : 1), cover * (S.fv ? -1 : 1)); g.rotate(r * Math.PI / 2);
+  g.drawImage(img, -w / 2, -h / 2, w, h);
+  return c;
+}
+function prepare(){
+  base = makeBase(1000); baseData = base.getContext("2d").getImageData(0, 0, base.width, base.height);
+  cv.width = base.width; cv.height = base.height; cv.hidden = false; $("hist").hidden = false; $("empty").hidden = true;
+  const t = el("canvas"); t.width = 48; t.height = Math.max(1, Math.round(48 * base.height / base.width));
+  t.getContext("2d").drawImage(base, 0, 0, t.width, t.height);
+  $("bg").style.backgroundImage = "url(" + t.toDataURL("image/jpeg", 0.7) + ")";
+  schedule();
+}
+
+/* processing */
+const sm = (x, a, b) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function lut(P){
+  const g = k => (P[k] || 0) / 100, ev = g("exposure") * 3, co = g("contrast"), hi_ = g("highlights"), sh = g("shadows"), wh = g("whites"), bl = g("blacks");
+  const L = new Uint8ClampedArray(256);
+  for (let i = 0; i < 256; i++) {
+    let x = Math.min(1, Math.pow(Math.pow(i / 255, 2.2) * Math.pow(2, ev), 1 / 2.2));
+    x += sh * 1.6 * x * (1 - x) * (1 - x); x += hi_ * 1.6 * x * x * (1 - x); x += wh * 0.25 * x * x * x; x += bl * 0.25 * Math.pow(1 - x, 3);
+    L[i] = ((x - 0.5) * (1 + co * 0.8) + 0.5) * 255;
+  }
+  return L;
+}
+function bb(d, w, h, r){
+  r = Math.round(r); if (r < 1) return d;
+  let a = d.slice(), b = new Uint8ClampedArray(d.length);
+  for (let it = 0; it < 4; it++) {
+    const p = it & 1, n = p ? h : w, m = p ? w : h, st = p ? w * 4 : 4, ls = p ? 4 : w * 4;
+    for (let l = 0; l < m; l++) for (let c = 0; c < 3; c++) {
+      const o = l * ls + c; let s = 0;
+      for (let i = -r; i <= r; i++) s += a[o + Math.min(n - 1, Math.max(0, i)) * st];
+      for (let i = 0; i < n; i++) { b[o + i * st] = s / (2 * r + 1); s += a[o + Math.min(n - 1, i + r + 1) * st] - a[o + Math.max(0, i - r) * st]; }
+    }
+    [a, b] = [b, a];
+  }
+  return a;
+}
+/* soft, slightly clumped film-grain texture (tiles 256x256) */
+let GT = null;
+function gtex(){
+  if (GT) return GT;
+  const N = 256, t = new Float32Array(N * N), a = new Float32Array(N * N); let s = 12345;
+  const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+  for (let i = 0; i < t.length; i++) t[i] = (rnd() + rnd() + rnd() - 1.5) * 2;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) a[y * N + x] = (t[y * N + ((x + N - 1) & 255)] + 2 * t[y * N + x] + t[y * N + ((x + 1) & 255)]) / 4;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) t[y * N + x] = (a[((y + N - 1) & 255) * N + x] + 2 * a[y * N + x] + a[((y + 1) & 255) * N + x]) / 4 * 2.7;
+  return GT = t;
+}
+function proc(src, w, h, P){
+  const g = k => P[k] || 0, wp = g("warp") / 100, wv = g("wave") / 100, ca = g("ca") / 100, ds = g("dist") / 100, vgl = g("vg") / 100; let d = src.data;
+  if (wp || wv || ca || ds || vgl) {
+    const o = new Uint8ClampedArray(d.length), hw = w / 2, hh = h / 2, cf = ca * .015;
+    for (let y = 0, i = 0; y < h; y++) {
+      const dy = y / h * 2 - 1;
+      for (let x = 0; x < w; x++, i += 4) {
+        const dx = x / w * 2 - 1, r2 = dx * dx + dy * dy; let f = 1, ox = 0, oy = 0;
+        if (wp) f *= 1 - wp * .6 * (1 - Math.min(1, r2));
+        if (ds) f *= 1 + ds * .35 * r2;
+        if (vgl) {
+          const q = Math.max(Math.abs(dx), Math.abs(dy)) * .6 + Math.sqrt(r2) / 1.4142 * .4, e = sm(q, .45, 1);
+          f *= 1 - vgl * .3 * e * e;
+          const rp = Math.sin(q * 34 + dx * 4 - dy * 3) * e * vgl * .02; ox = dx * rp * hw; oy = dy * rp * hh;
+        }
+        let u = hw + (x - hw) * f + ox, v = hh + (y - hh) * f + oy;
+        if (wv) { u += Math.sin(y / h * 25) * wv * .03 * w; v += Math.sin(x / w * 25) * wv * .03 * h; }
+        const jg = ((Math.min(h - 1, Math.max(0, v)) | 0) * w + (Math.min(w - 1, Math.max(0, u)) | 0)) * 4;
+        if (cf) {
+          const ur = hw + (u - hw) * (1 + cf), vr = hh + (v - hh) * (1 + cf), ub = hw + (u - hw) * (1 - cf), vbb = hh + (v - hh) * (1 - cf);
+          o[i] = d[((Math.min(h - 1, Math.max(0, vr)) | 0) * w + (Math.min(w - 1, Math.max(0, ur)) | 0)) * 4];
+          o[i + 2] = d[((Math.min(h - 1, Math.max(0, vbb)) | 0) * w + (Math.min(w - 1, Math.max(0, ub)) | 0)) * 4 + 2];
+        } else { o[i] = d[jg]; o[i + 2] = d[jg + 2]; }
+        o[i + 1] = d[jg + 1]; o[i + 3] = 255;
+      }
+    }
+    d = o;
+  }
+  const nr = g("nr") / 100;
+  if (nr) {
+    const Nb = bb(d, w, h, Math.max(1, nr * w * .004)), t = Math.min(.9, nr * .9), o = new Uint8ClampedArray(d.length);
+    for (let i = 0; i < d.length; i++) o[i] = d[i] + (Nb[i] - d[i]) * t;
+    d = o;
+  }
+  if (g("blur")) d = bb(d, w, h, g("blur") / 100 * w * .02);
+  const sh = g("sharp") / 100, Sd = sh ? bb(d, w, h, Math.max(1, w * .0025)) : null;
+  const vb = g("vb") / 100, Bd = vb ? bb(d, w, h, w * .03) : null, gr = g("grain") / 100, vig = g("vig") / 100;
+  const T = gr ? gtex() : null, gs = Math.max(1, w / 800);
+  const L = lut(P), rm = 1 + .25 * g("temp") / 100, bm = 1 - .25 * g("temp") / 100, gm = 1 - .15 * g("tint") / 100;
+  const sat = g("sat") / 100, vib = g("vibrance") / 100, out = new ImageData(w, h), o = out.data;
+  for (let y = 0, i = 0; y < h; y++) {
+    const dy = y / h * 2 - 1, gy = T ? ((y / gs) | 0) & 255 : 0;
+    for (let x = 0; x < w; x++, i += 4) {
+      const dx = x / w * 2 - 1, r2 = dx * dx + dy * dy; let a = d[i], b = d[i + 1], c = d[i + 2];
+      if (Bd) { const t = Math.min(1, Math.max(0, (Math.sqrt(r2) - .3) / .9)) * vb; a += (Bd[i] - a) * t; b += (Bd[i + 1] - b) * t; c += (Bd[i + 2] - c) * t; }
+      if (Sd) {
+        const k = sh * 1.6; a += (a - Sd[i]) * k; b += (b - Sd[i + 1]) * k; c += (c - Sd[i + 2]) * k;
+        a = a < 0 ? 0 : a > 255 ? 255 : a; b = b < 0 ? 0 : b > 255 ? 255 : b; c = c < 0 ? 0 : c > 255 ? 255 : c;
+      }
+      let r = L[a | 0] * rm, gg = L[b | 0] * gm, bl = L[c | 0] * bm;
+      if (sat || vib) {
+        const l = 0.2126 * r + 0.7152 * gg + 0.0722 * bl, mx = Math.max(r, gg, bl), mn = Math.min(r, gg, bl), f = 1 + sat + vib * (1 - (mx - mn) / (mx + 1));
+        r = l + (r - l) * f; gg = l + (gg - l) * f; bl = l + (bl - l) * f;
+      }
+      if (vig) { const m = 1 + vig * 0.45 * r2; r *= m; gg *= m; bl *= m; }
+      if (vgl) {
+        const rr = Math.sqrt(r2), q = Math.max(Math.abs(dx), Math.abs(dy)) * .6 + rr / 1.4142 * .4, e = sm(q, .4, 1), e2 = e * e;
+        const nd = Math.max(0, -(dx * .6 + dy * .8) / (rr + 1e-6)), spec = nd * nd * nd * e2, q2 = (q - .9) / .04, rim = Math.exp(-q2 * q2) * (.4 + .6 * nd);
+        const sp = vgl * 255 * (spec * .38 + rim * .35);
+        r += e2 * vgl * 14 + sp; gg += e2 * vgl * 34 + sp; bl += e2 * vgl * 46 + sp;
+      }
+      if (T) {
+        const lum = (r * .2126 + gg * .7152 + bl * .0722) / 255, wt = 1 - Math.pow(Math.abs(lum * 2 - 1), 1.8) * .85;
+        const idx = gy * 256 + (((x / gs) | 0) & 255), n0 = T[idx], c1 = T[(idx + 4099) & 65535], gn = gr * 34 * wt;
+        r += gn * (n0 + .18 * c1); gg += gn * n0; bl += gn * (n0 - .18 * c1);
+      }
+      o[i] = r; o[i + 1] = gg; o[i + 2] = bl; o[i + 3] = 255;
+    }
+  }
+  return out;
+}
+
+/* remove tool: fills each painted spot from the colours around it */
+function heal(src, w, h){
+  const d = new Uint8ClampedArray(src.data), mn = Math.min(w, h);
+  S.rm.forEach(s => {
+    const Rr = Math.max(3, s.r / 100 * .1 * mn), stp = Math.max(1, Rr * .5); let px = null, py = 0;
+    const spot = (cx, cy) => {
+      let sr = 0, sg = 0, sb = 0, n = 0;
+      for (let k = 0; k < 12; k++) {
+        const an = k / 12 * 6.2832, x = Math.round(cx + Math.cos(an) * Rr * 1.6), y = Math.round(cy + Math.sin(an) * Rr * 1.6);
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const j = (y * w + x) * 4; sr += d[j]; sg += d[j + 1]; sb += d[j + 2]; n++;
+      }
+      if (!n) return; sr /= n; sg /= n; sb /= n;
+      const x0 = Math.max(0, Math.floor(cx - Rr)), x1 = Math.min(w - 1, Math.ceil(cx + Rr)), y0 = Math.max(0, Math.floor(cy - Rr)), y1 = Math.min(h - 1, Math.ceil(cy + Rr));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const dd = Math.hypot(x - cx, y - cy) / Rr; if (dd >= 1) continue;
+        const t = Math.min(1, (1 - dd) * 2.5), j = (y * w + x) * 4;
+        d[j] += (sr - d[j]) * t; d[j + 1] += (sg - d[j + 1]) * t; d[j + 2] += (sb - d[j + 2]) * t;
+      }
+    };
+    for (let i = 0; i < s.p.length; i += 2) {
+      const x = s.p[i] * w, y = s.p[i + 1] * h;
+      if (px === null) spot(x, y);
+      else { const n = Math.max(1, Math.ceil(Math.hypot(x - px, y - py) / stp)); for (let j = 1; j <= n; j++) spot(px + (x - px) * j / n, py + (y - py) * j / n); }
+      px = x; py = y;
+    }
+  });
+  return new ImageData(d, w, h);
+}
+
+/* mask: one alpha map for radial, linear and brush */
+let mc = {k: "", a: null};
+function maskA(w, h){
+  const m = S.m, k = w + JSON.stringify(m) + S.st.reduce((n, s) => n + s.p.length, 0);
+  if (mc.k === k) return mc.a;
+  const mn = Math.min(w, h), a = new Uint8Array(w * h);
+  if (m.t === "radial") {
+    const cx = m.cx * w, cy = m.cy * h, rx = Math.max(1, m.rx / 100 * mn), ry = Math.max(1, m.ry / 100 * mn), c = Math.cos(m.rot), s = Math.sin(m.rot), f = Math.max(.02, m.f / 100);
+    for (let y = 0, p = 0; y < h; y++) for (let x = 0; x < w; x++, p++) {
+      const dx = x - cx, dy = y - cy, px = (dx * c + dy * s) / rx, py = (-dx * s + dy * c) / ry, dd = Math.sqrt(px * px + py * py);
+      let t = (1 - dd) / f; t = t < 0 ? 0 : t > 1 ? 1 : t; a[p] = 255 * t * t * (3 - 2 * t);
+    }
+  } else if (m.t === "linear") {
+    const cx = m.cx * w, cy = m.cy * h, an = m.a * Math.PI / 180, nx = Math.cos(an), ny = Math.sin(an), wd = Math.max(1, m.wd / 100 * mn);
+    for (let y = 0, p = 0; y < h; y++) for (let x = 0; x < w; x++, p++) {
+      let t = (1 - ((x - cx) * nx + (y - cy) * ny) / wd) / 2; t = t < 0 ? 0 : t > 1 ? 1 : t; a[p] = 255 * t * t * (3 - 2 * t);
+    }
+  } else if (m.t === "draw") {
+    const c = el("canvas"); c.width = w; c.height = h; const g = c.getContext("2d");
+    const dot = (x, y, Rr, f, e) => {
+      const gr = g.createRadialGradient(x, y, Rr * (1 - f), x, y, Rr); gr.addColorStop(0, "#fff"); gr.addColorStop(1, "rgba(255,255,255,0)");
+      g.globalCompositeOperation = e ? "destination-out" : "source-over"; g.fillStyle = gr; g.fillRect(x - Rr, y - Rr, Rr * 2, Rr * 2);
+    };
+    S.st.forEach(s => {
+      const Rr = s.r / 100 * .2 * mn, f = s.f / 100; let px = null, py = 0;
+      for (let i = 0; i < s.p.length; i += 2) {
+        const x = s.p[i] * w, y = s.p[i + 1] * h;
+        if (px === null) dot(x, y, Rr, f, s.e);
+        else { const n = Math.max(1, Math.ceil(Math.hypot(x - px, y - py) / (Rr * .25))); for (let j = 1; j <= n; j++) dot(px + (x - px) * j / n, py + (y - py) * j / n, Rr, f, s.e); }
+        px = x; py = y;
+      }
+    });
+    const dd = g.getImageData(0, 0, w, h).data;
+    for (let p = 0; p < a.length; p++) a[p] = dd[p * 4 + 3];
+  }
+  mc = {k, a}; return a;
+}
+function pipe(src, w, h){
+  const s0 = S.rm.length ? heal(src, w, h) : src, out = proc(s0, w, h, S.V);
+  if (S.m.t !== "off" && Object.values(S.L).some(Boolean)) {
+    const a = maskA(w, h), l = proc(out, w, h, S.L).data, o = out.data, inv = S.m.inv;
+    for (let p = 0, i = 0; p < a.length; p++, i += 4) {
+      const k = (inv ? 255 - a[p] : a[p]) / 255;
+      if (k) { o[i] += (l[i] - o[i]) * k; o[i + 1] += (l[i + 1] - o[i + 1]) * k; o[i + 2] += (l[i + 2] - o[i + 2]) * k; }
+    }
+  }
+  return out;
+}
+
+function schedule(){ if (!queued && img) { queued = true; requestAnimationFrame(render); } }
+function render(){
+  queued = false; if (!img || !base) return;
+  const data = showOrig ? baseData : pipe(baseData, base.width, base.height), g = cv.getContext("2d");
+  const editing = mode === "mask" && S.m.t !== "off" && ovl;
+  g.putImageData(data, 0, 0);
+  vw.style.touchAction = (mode === "mask" && S.m.t !== "off") || mode === "remove" ? "none" : "";
+  if (editing && !showOrig) {
+    const w = base.width, h = base.height, a = maskA(w, h), o = new ImageData(w, h), t = el("canvas");
+    for (let p = 0; p < a.length; p++) { o.data[p * 4] = 255; o.data[p * 4 + 1] = 30; o.data[p * 4 + 2] = 50; o.data[p * 4 + 3] = (S.m.inv ? 255 - a[p] : a[p]) * .5; }
+    t.width = w; t.height = h; t.getContext("2d").putImageData(o, 0, 0); g.drawImage(t, 0, 0);
+  }
+  drawOv(); hist(data.data);
+}
+function hist(d){
+  const B = [new Array(64).fill(0), new Array(64).fill(0), new Array(64).fill(0)];
+  for (let i = 0; i < d.length; i += 16) for (let c = 0; c < 3; c++) B[c][d[i + c] >> 2]++;
+  const g = $("hist").getContext("2d"), cols = ["rgba(255,70,70,.7)", "rgba(70,230,90,.7)", "rgba(80,130,255,.7)"];
+  g.clearRect(0, 0, 256, 44); g.globalCompositeOperation = "lighter";
+  B.forEach((b, c) => {
+    const mx = Math.max(...b) || 1; g.beginPath(); g.moveTo(0, 44);
+    for (let i = 0; i < 64; i++) g.lineTo(i * 4, 42 - b[i] / mx * 38);
+    g.lineTo(252, 44); g.closePath(); g.fillStyle = cols[c]; g.fill();
+  });
+  g.globalCompositeOperation = "source-over";
+}
+
+/* on-canvas mask handles */
+function geo(){ const W = vw.clientWidth, H = vw.clientHeight, s = Math.min(W / cv.width, H / cv.height); return {W, H, s, ox: (W - cv.width * s) / 2, oy: (H - cv.height * s) / 2}; }
+function toImg(e){
+  const g = geo(), r = vw.getBoundingClientRect(), lx = (e.clientX - r.left) * g.W / r.width, ly = (e.clientY - r.top) * g.H / r.height;
+  return [(lx - g.ox) / g.s, (ly - g.oy) / g.s];
+}
+function drawOv(){
+  const o = $("ov");
+  if (!img || !base || mode !== "mask" || S.m.t === "off" || S.m.t === "draw" || showOrig) { o.innerHTML = ""; return; }
+  const g = geo(), m = S.m, u = Math.min(cv.width, cv.height), S2 = (x, y) => [g.ox + x * g.s, g.oy + y * g.s], C = S2(m.cx * cv.width, m.cy * cv.height);
+  o.setAttribute("viewBox", "0 0 " + g.W + " " + g.H);
+  const dot = (p, h, cls) => '<circle class="' + (cls || "hd") + '" cx="' + p[0] + '" cy="' + p[1] + '" r="' + (cls ? 11 : 8) + '"/><circle data-h="' + h + '" cx="' + p[0] + '" cy="' + p[1] + '" r="24" fill="transparent" style="pointer-events:all;cursor:pointer;touch-action:none"/>';
+  let h = "";
+  if (m.t === "radial") {
+    const rx = m.rx / 100 * u * g.s, ry = m.ry / 100 * u * g.s, c = Math.cos(m.rot), s = Math.sin(m.rot), deg = m.rot * 180 / Math.PI;
+    const Rt = (lx, ly) => [C[0] + lx * c - ly * s, C[1] + lx * s + ly * c], f = m.f / 100;
+    const T = Rt(0, -ry), RO = Rt(0, -ry - 38);
+    h += '<ellipse class="ln" cx="' + C[0] + '" cy="' + C[1] + '" rx="' + rx + '" ry="' + ry + '" transform="rotate(' + deg + ' ' + C[0] + ' ' + C[1] + ')"/>';
+    if (f > .03) h += '<ellipse class="ln dl" cx="' + C[0] + '" cy="' + C[1] + '" rx="' + rx * (1 - f) + '" ry="' + ry * (1 - f) + '" transform="rotate(' + deg + ' ' + C[0] + ' ' + C[1] + ')"/>';
+    h += '<line class="ln" x1="' + T[0] + '" y1="' + T[1] + '" x2="' + RO[0] + '" y2="' + RO[1] + '"/>';
+    h += dot(Rt(rx, 0), "r") + dot(Rt(-rx, 0), "l") + dot(Rt(0, ry), "b") + dot(T, "t") + dot(RO, "rot") + dot(C, "c", "hc");
+  } else {
+    const an = m.a * Math.PI / 180, nx = Math.cos(an), ny = Math.sin(an), tx = -ny, ty = nx, wd = m.wd / 100 * u * g.s, Lg = 3000, off = 90;
+    const ln = (k, cls) => { const P = [C[0] + nx * k, C[1] + ny * k]; return '<line class="' + cls + '" x1="' + (P[0] - tx * Lg) + '" y1="' + (P[1] - ty * Lg) + '" x2="' + (P[0] + tx * Lg) + '" y2="' + (P[1] + ty * Lg) + '"/>'; };
+    const RO = [C[0] + tx * off, C[1] + ty * off];
+    h += ln(-wd, "ln") + ln(0, "ln dl") + ln(wd, "ln");
+    h += '<line class="ln" x1="' + C[0] + '" y1="' + C[1] + '" x2="' + RO[0] + '" y2="' + RO[1] + '"/>';
+    h += dot([C[0] - nx * wd - tx * off, C[1] - ny * wd - ty * off], "ws", "hs") + dot([C[0] + nx * wd - tx * off, C[1] + ny * wd - ty * off], "we") + dot(RO, "rot") + dot(C, "c", "hc");
+  }
+  o.innerHTML = h;
+}
+new ResizeObserver(() => { if (img) drawOv(); }).observe(vw);
+
+/* pointer: handles, brush and remove */
+let act = null, down = false, cur = null, pk = null;
+const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+function dragTo(e){
+  const [ix, iy] = toImg(e), w = cv.width, h = cv.height, u = Math.min(w, h), m = S.m;
+  if (act === "c") { m.cx = cl(ix / w, 0, 1); m.cy = cl(iy / h, 0, 1); }
+  else {
+    const dx = ix - m.cx * w, dy = iy - m.cy * h;
+    if (m.t === "radial") {
+      if (act === "rot") m.rot = Math.atan2(dy, dx) + Math.PI / 2;
+      else {
+        const c = Math.cos(m.rot), s = Math.sin(m.rot), lx = dx * c + dy * s, ly = -dx * s + dy * c;
+        if (act === "l" || act === "r") m.rx = cl(Math.abs(lx) / u * 100, 3, 200); else m.ry = cl(Math.abs(ly) / u * 100, 3, 200);
+      }
+    } else if (m.t === "linear") {
+      if (act === "rot") m.a = Math.atan2(dy, dx) * 180 / Math.PI - 90;
+      else { const an = m.a * Math.PI / 180; m.wd = cl(Math.abs(dx * Math.cos(an) + dy * Math.sin(an)) / u * 100, 1, 150); }
+    }
+  }
+  schedule();
+}
+function startPaint(e, kind){
+  down = true; pk = kind; vw.setPointerCapture(e.pointerId);
+  const [ix, iy] = toImg(e), x = ix / cv.width, y = iy / cv.height;
+  if (kind === "m") { cur = {p: [x, y], r: S.m.r, f: S.m.f, e: S.m.er}; S.st.push(cur); }
+  else { cur = {p: [x, y], r: S.G.rb}; S.rm.push(cur); }
+  schedule();
+}
+vw.onpointerdown = e => {
+  if (!img || !base) return;
+  if (mode === "mask" && S.m.t !== "off") {
+    if (S.m.t === "draw") return startPaint(e, "m");
+    act = (e.target.dataset && e.target.dataset.h) || "c"; vw.setPointerCapture(e.pointerId);
+    if (act === "c") dragTo(e);
+  } else if (mode === "remove") startPaint(e, "rm");
+};
+vw.onpointermove = e => {
+  if (down && cur) { const [ix, iy] = toImg(e); cur.p.push(ix / cv.width, iy / cv.height); schedule(); }
+  else if (act) dragTo(e);
+};
+vw.onpointerup = vw.onpointercancel = () => {
+  const had = down || act; const handle = !!act;
+  down = false; act = null; cur = null; pk = null;
+  if (had) { commit(); if (handle) buildUI(); }
+};
+
+/* files, compare, export */
+$("file").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      img = im; S = NEW(); autoPre = null; H = [clone(S)]; hi = 0; mc = {k: "", a: null};
+      $("cmp").disabled = false; $("save").disabled = false; prepare(); buildUI(); ui();
+      say(f.name + " (" + im.naturalWidth + " × " + im.naturalHeight + ")");
+    };
+    im.onerror = () => say("That file could not be opened as an image.");
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(f);
+};
+const cmp = $("cmp");
+cmp.addEventListener("pointerdown", () => { showOrig = true; schedule(); });
+["pointerup", "pointerleave", "pointercancel"].forEach(ev => cmp.addEventListener(ev, () => { if (showOrig) { showOrig = false; schedule(); } }));
+$("help").onclick = () => say("Pick a tool in the dock; tap it again to collapse. Drag a slider to fine-tune, tap beside the thumb to move 2 points, double tap to reset it. Masking: drag the dots to move, stretch and rotate the mask. Hold the clock to compare. The check saves or shares the full-size photo.");
+
+$("save").onclick = async () => {
+  say("Processing full size…");
+  await new Promise(r => setTimeout(r, 30));
+  try {
+    const fc = makeBase(3000), fg = fc.getContext("2d");
+    fg.putImageData(pipe(fg.getImageData(0, 0, fc.width, fc.height), fc.width, fc.height), 0, 0);
+    const blob = await new Promise(r => fc.toBlob(r, "image/jpeg", 0.92));
+    const file = new File([blob], "photo-" + Date.now() + ".jpg", {type: "image/jpeg"});
+    $("out").src = fc.toDataURL("image/jpeg", 0.92); $("out").style.display = "block";
+    if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file]}); $("note").textContent = "Exported at " + fc.width + " × " + fc.height + "."; }
+    else $("note").textContent = "Sharing is not available here. Press and hold the photo below and choose to download it.";
+    $("msg").hidden = false;
+  } catch (e) { say("Export did not finish: " + e.name); }
+};
+
+/* desktop-site mode on a phone renders the page tiny: scale the whole UI up to fit */
+function fit(){
+  const a = $("app"), sw = Math.min(screen.width, screen.height), iw = innerWidth;
+  K = sw < 700 && iw > sw * 1.1 ? Math.min(3, iw / 320) : 1;
+  a.style.cssText = K > 1 ? "width:" + iw / K + "px;height:" + innerHeight / K + "px;max-width:none;margin:0;transform:scale(" + K + ");transform-origin:0 0" : "";
+}
+addEventListener("resize", fit); fit(); buildUI();
+</script>
+<script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
+</body>
+</html>
